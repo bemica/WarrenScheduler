@@ -1,245 +1,394 @@
 
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Scanner;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 
-import org.apache.poi.hssf.usermodel.HSSFCell;
-import org.apache.poi.hssf.usermodel.HSSFRow;
-import org.apache.poi.hssf.usermodel.HSSFSheet;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import javax.swing.*;
 
 public class Scheduler {
-  private static ArrayList<Camper> allCampers;
-  private static ArrayList<Activity> allActs;
 
-  public static void main(String[] args){
-	  allActs = new ArrayList<Activity>();
-	// 0: Open up all the spreadsheet things
+	public static HashMap<String, Activity[]> allActivitiesMaster;
+	public static ArrayList<Camper> allCampersMaster;
 
-	JFileChooser fileChooser = new JFileChooser();
-	fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
+	public static int[] actPeriodCounter;
 
+	public static HashMap<String, Integer> failedActivitySchedule;
 
-	//TODO: find a parent
-	JDialog parent = new JDialog();
-	int result = fileChooser.showOpenDialog(parent);
+	private static OutputStream fileout = null;
+	private static FileInputStream filein = null;
+	private static File spreadFile;
 
-	if(result == JFileChooser.APPROVE_OPTION) {
-		File spreadFile = fileChooser.getSelectedFile();
+	private static XSSFWorkbook workbook = null;
 
+	public static void main(String[] args){
+		actPeriodCounter = new int[4];
 
+		chooseInputFile();
 
-		InputStream spread = null;
-		FileOutputStream os = null;
+		XSSFSheet activities = null;
+		XSSFSheet camperChoices = null;
+
+		// Assuming first sheet is activities and second sheet is camper choices.
+		activities = workbook.getSheetAt(0);
+		camperChoices = workbook.getSheetAt(1);
+
+		// Reading in our data.
+		parseActivities(activities);
+		parseCampers(camperChoices);
+		
 		try {
-			//spread = new FileInputStream("C:\\Users\\Nathan\\IdeaProjects\\CampScheduler\\src\\main\\resources\\2018 1G Camper Activities (Grace Getchell's conflicted copy 2018-06-18).xls");
-			spread = new FileInputStream(spreadFile);
-			//os = new FileOutputStream(spreadFile);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-			System.out.println("File name you entered is wrong");
-		}
-
-		HSSFWorkbook workbook = new HSSFWorkbook();
-		HSSFSheet activities = null;
-		HSSFSheet camperChoices = null;
-		allCampers = null;
-		try {
-			workbook = new HSSFWorkbook(spread);
-			activities = workbook.getSheetAt(0);
-			camperChoices = workbook.getSheetAt(1);
-
-			allCampers = buildAllCampers(camperChoices);
-
-			ArrayList<Activity> firstPeriod = buildActivities(1, activities);
-			ArrayList<Activity> secondPeriod = buildActivities(2, activities);
-			ArrayList<Activity> thirdPeriod = buildActivities(3, activities);
-			ArrayList<Activity> fourthPeriod = buildActivities(4, activities);
-
-			System.out.println(firstPeriod);
-			System.out.println(secondPeriod);
-			System.out.println(thirdPeriod);
-			System.out.println(fourthPeriod);
-
-
-			allActs.addAll(firstPeriod);
-			allActs.addAll(secondPeriod);
-			allActs.addAll(thirdPeriod);
-			allActs.addAll(fourthPeriod);
+			filein.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 
+		// First attempt will hold our first valid schedule.
+		Schedule keepSchedule = null;
+		ScheduleResults keepResults = null;
 
-		// 1: extract data from spreadsheet
+		// Optimized will hold our schedule that is valid and an attempt to optimize.
+		Schedule variableSchedule = null;
+		ScheduleResults variableResults = null;
 
+		// Trying to create our first schedule.
+		for(int i = 0; i < 7500; i++) {
+			//System.out.println(i);
+			variableSchedule = new Schedule(allCampersMaster, allActivitiesMaster);
 
-		// 2: place emph campers (treat emph as separate activity from norm)
-		//    name emph acts "[act]emph1" and "[act]emph2" e.g. "sailemph1"
-		for (Camper camper : allCampers) {
+			// If we have a failed schedule, pass in the problem campers from that iteration.
+			variableSchedule.shuffleActivities();
+			
+			//keepResults == null ? new ArrayList<Camper>() : keepResults.problemCampers
+			variableSchedule.scheduleGuaranteed(new ArrayList<Camper>());
+
+			// Schedule works.
+			variableResults = variableSchedule.fillOutSchedule();
+			if(variableResults.getIsValid()) {
+				System.out.println("Successfully created one valid schedule!");
+				System.out.println("Attempting to optimize...");
+				System.exit(1);
+				break;
+			} 
+			// Schedule doesn't work, trash it. 
+			else {
+				if(keepSchedule == null) {
+					keepSchedule = variableSchedule;
+					keepResults = variableResults;
+					continue;
+				}
+				
+				if(keepResults.problemCampers.size() > variableResults.problemCampers.size()) {
+					System.out.println("Found better schedule: " + keepResults.problemCampers.size() + " to " + variableResults.problemCampers.size() +
+							 " " + keepSchedule.getOptimizedScore() + "->" + variableSchedule.getOptimizedScore());
+					keepSchedule = variableSchedule;
+					keepResults = variableResults;
+				} else if(keepResults.problemCampers.size() == variableResults.problemCampers.size() &&
+						keepSchedule.getOptimizedScore() > variableSchedule.getOptimizedScore()) {
+					System.out.println("Found better schedule: " + keepResults.problemCampers.size() + " to " + variableResults.problemCampers.size() +
+							 " " + keepSchedule.getOptimizedScore() + "->" + variableSchedule.getOptimizedScore());
+					keepSchedule = variableSchedule;
+					keepResults = variableResults;
+				}
+			}
+
+		}
+
+		for(Map.Entry<String, Integer> item : failedActivitySchedule.entrySet()) {
+			System.out.println(item.getKey() + ": " + item.getValue());
+		}
+
+		if(keepSchedule != null) {
+			writeToFile(keepSchedule.allCampers, camperChoices, activities, keepSchedule.allActivities);
+		}
+		cleanup();
+	}
+
+	/**
+	 * Deep copies the ArrayList passed in. 
+	 * @param campers : ArrayList to be copied. 
+	 * @return : Copy of the parameter ArrayList.
+	 */
+	public static ArrayList<Camper> copyCampers(ArrayList<Camper> campers) {
+		ArrayList<Camper> toReturn = new ArrayList<Camper>();
+
+		for(Camper c : campers) {
+			Camper copy = new Camper(c.getFirstName(), 
+					c.getLastName(), 
+					c.getChoices(),
+					c.getID(),
+					c.getIsEmph());
+			toReturn.add(copy);
+		}
+
+		return toReturn;
+	}
+
+	// TODO Look into more algorithmically efficient method of copying. 
+	/**
+	 * This method copies the list of Activities.
+	 * @param activities : The HashMap to be copied.
+	 * @return : The copy of the HashMap.
+	 */
+	public static HashMap<String, Activity[]> copyActivities(HashMap<String, Activity[]> activities) {
+		HashMap<String, Activity[]> toReturn = new HashMap<String, Activity[]>();
+		Activity[] copy = null;
+		Activity[] toCopy = null;
+
+		// Copying each entry in the map. s
+		for(Entry<String, Activity[]> item : activities.entrySet()) {
+			copy = new Activity[4];
+			toCopy = item.getValue();
+
+			// Copying activities in the array.
+			for(int i = 0; i < toCopy.length; i++) {
+				if(toCopy[i] != null) {
+					Activity copied = new Activity(toCopy[i].getName(), 
+							toCopy[i].getPeriod(), 
+							toCopy[i].getMaxCampers(),
+							toCopy[i].getIsVariable());
+					copy[i] = copied;
+				} else copy[i] = null;
+			}
+
+			toReturn.put(item.getKey(), copy);
+		}
+
+		return toReturn;
+	}
+
+	/**
+	 * This method guides the user through selecting a file to read data from. 
+	 */
+	public static void chooseInputFile() {
+		JFileChooser fileChooser = new JFileChooser();
+		fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
+
+		JDialog parent = new JDialog();
+		int result = fileChooser.showOpenDialog(parent);
+
+		if(result == JFileChooser.APPROVE_OPTION) {
+			spreadFile = fileChooser.getSelectedFile();
+
+			// Format check.
+			if(!(spreadFile.getName().contains(".xlsx") ||
+					spreadFile.getName().contains(".xlsm"))) {
+				throw new IllegalStateException("I'm sorry. That is an invalid file type. Please use a valid .xlsx or .xlsm file.");
+			}
+
+			// Opening connection.
 			try {
-				camper.place(1, allActs);
-				camper.place(2, allActs);
+				filein = new FileInputStream(spreadFile);
+				workbook = new XSSFWorkbook(filein);
+			} catch (FileNotFoundException e) {
+				System.err.println("File cannot be found");
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		} else System.exit(0);
+	}
 
-			} catch (TooManyCampersException e) {
-//        System.out.println("Camper " + camper.firstName + " " + camper.lastName + " did not get their first or second choice");
-				// TODO: something should happen here?
-			} catch (NoMatchingActivitiesFoundException e) {
+	/**
+	 * This method safely closes the file connections opened during the program.
+	 */
+	public static void cleanup() {
+
+        JOptionPane pane = new JOptionPane();
+        JDialog dialog = pane.createDialog(pane, "Done");
+        pane.setMessage("Finished scheduling campers");
+        dialog.setVisible(true);
+
+        if(filein != null) {
+
+			try {
+				filein.close();
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+		}
+		if(fileout != null) {
+
+			try {
+				fileout.close();
+			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
 
+		System.out.println("Goodbye!");
+		System.exit(0);
+	}
 
-		// 3: place other 1st Choices NEVERMIND
-		// 4: place other 2nd Choices NEVERMIND done with emph
-		// 5: place other choices in order
-		//    ideas: randomize, prioritize low ratios, place everybody in 1st act
+	/**
+	 * This method reads in the Activity data from the inputted Excel File.
+	 * @param actSheet : The sheet detailing the activities.
+	 */
+	private static void parseActivities(XSSFSheet actSheet){
+		allActivitiesMaster = new HashMap<String, Activity[]>();
+		failedActivitySchedule = new HashMap<String, Integer>();
 
-		for (int i = 3; i <= 6; i++) {
-			for (Camper camper : allCampers) {
-				if (!camper.scheduled()) {
-					try {
-						camper.place(i, allActs);
-					} catch (TooManyCampersException e) {
-//                  System.out.println("Camper " + camper.firstName + " " + camper.lastName + " did not get their " + i + "th choice");
-					} catch (NoMatchingActivitiesFoundException e) {
-						e.printStackTrace();
+		// the first row is a header, so start at the second one
+		int rowIndex = 1;
+		XSSFRow row;
+
+		//as soon as we hit the first empty row, we break
+		while ((row = actSheet.getRow(rowIndex++)) != null){
+			int activityCount = 0;
+
+			String actName;
+			double maxCampers;
+			boolean isVariable;
+			
+			try {
+				actName = row.getCell(0).getStringCellValue().toLowerCase();
+				maxCampers = row.getCell(1).getNumericCellValue();
+				isVariable = row.getCell(6).toString().equals("Yes") ? true : false;
+			} catch(NullPointerException e) {
+				// There was some junk in the activities sheet. Let's ignore it.
+				System.out.println("Found a junk line. Ignorning.");
+				continue;
+			}
+
+			failedActivitySchedule.put(actName, 0);
+
+			// The times when each activity will be offered. 
+			Activity[] activityCatalog = new Activity[4];
+
+			for(int i = 2; i < 6; i++) {
+				// Activity exists during this period.
+				if(row.getCell(i).getStringCellValue().toLowerCase().equals("yes")) {
+					activityCatalog[i - 2] = new Activity(actName, i-2, maxCampers, isVariable);
+					activityCount++;
+					actPeriodCounter[i-2]++;
+				}
+				else
+					activityCatalog[i - 2] = null;
+			}
+
+			// Number of times that activity occurs during the day. 
+			for(Activity a : activityCatalog)
+				if(a != null) a.setActivityCount(activityCount);
+
+			allActivitiesMaster.put(actName, activityCatalog);
+		}
+	}
+
+	/**
+	 * This method reads in the camper data provided by the excel sheet. 
+	 * @param camperSheet : The sheet leading to the camper data and choices.
+	 */
+	private static void parseCampers(XSSFSheet camperSheet) {
+		allCampersMaster = new ArrayList<Camper>();
+
+		// Row 0 is a header. 
+		int rowIndex = 1;
+
+		int idNumber = 100;
+
+		// List terminates when two blank rows are encountered.
+		boolean lastEmpty = false;
+
+		XSSFRow row;
+		outer:
+			while(true) {
+
+				row = camperSheet.getRow(rowIndex);
+				String fname = row.getCell(2).toString();
+				String lname = row.getCell(1).toString();
+
+				if(fname.equals("") && lname.equals("")) {
+					if(lastEmpty) {
+						// hit two blank rows consecutively: stop.
+						break outer;
+					} else {
+						lastEmpty = true;
+						rowIndex++;
+						continue;
 					}
+				} else
+					lastEmpty = false;
+
+				String[] choices = new String[6];
+
+				// Reading in camper activity choices. 
+				for(int k = 0; k < 6; k++) {
+					choices[k] = row.getCell(k+3).toString();
+				}
+
+				// TODO Add in emphasis checks. 
+				boolean isEmph = false;
+				if(choices[0].equals(choices[1])) isEmph = true;
+				
+				Camper c = new Camper(fname, lname, choices, idNumber, isEmph);
+				idNumber++;
+
+				allCampersMaster.add(c);
+
+				rowIndex++;
+			}
+	}
+
+	// TODO Add in error checking (too many campers)
+	// TODO check number of slots per activity space error. 
+
+	private static void writeToFile(ArrayList<Camper> campers, XSSFSheet camperSheet, XSSFSheet activitiesSheet, HashMap<String, Activity[]> activities){
+		try {
+			fileout = new FileOutputStream(spreadFile);
+			
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		
+		XSSFRow row;
+		XSSFCell cell;
+		int blankCounter = 0;
+		
+		Camper.CamperComparator cc = new Camper.CamperComparator();
+		campers.sort(cc);
+		
+		for(Camper c : campers) {
+			row = camperSheet.getRow(c.getID()-(99 - blankCounter));
+			
+			if(row.getCell(0).toString().equals("")) {
+				row = camperSheet.getRow(c.getID() - (99 - (blankCounter + 1)));
+				blankCounter++;
+			}
+			
+			for(int k = 0; k < 4; k++) {
+				cell = row.getCell(k+9);
+				if(c.getActivity(k) == null) {
+					cell.setCellValue("NULL");
+					continue;
+				}
+				row.getCell(k+9).setCellValue(c.getActivity(k).getName());
+			}
+		}
+		
+		for(int i = 0; i < activities.size(); i++) {
+			row = activitiesSheet.getRow(i+1);
+			Activity[] target = activities.get(row.getCell(0).toString());
+			if(target == null) continue;
+			System.out.println(row.getCell(0).toString());
+			for(int j = 0; j < 4; j++) {
+				if(target[j] != null) {
+					row.getCell(j+2).setCellValue("Yes");
+				} else {
+					row.getCell(j+2).setCellValue("No");
 				}
 			}
 		}
-
-		// 6: print spreadsheet(s) of activities
-
+		
 		try {
-			writeActivities(allCampers, camperChoices);
-
-//			FileOutputStream os = new FileOutputStream("C:\\Users\\Nathan\\IdeaProjects\\CampScheduler\\src\\main\\resources\\2018 1G Camper Activities (Grace Getchell's conflicted copy 2018-06-18).xls");
-			os = new FileOutputStream(spreadFile);
-			workbook.write(os);
-			workbook.close();
-			os.close();
+			workbook.write(fileout);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
-		// 7: profit!
-
-		System.out.println(allCampers);
-
-		// Activity act = new Activity("", 2, 4.2, 1);
-		// Camper camper = new Camper("", "", new ArrayList<String>());
 	}
-
-  }
-
-  /*
-  Given a period (1 through 4) and a sheet of an excel file this method returns an ArrayList of the activities in that
-  period
-   */
-  private static ArrayList<Activity> buildActivities(int period, HSSFSheet actSheet){
-	ArrayList<Activity> acts = new ArrayList<Activity>();
-
-	// the first row is a header, so start at the second one
-	int rowIndex = 1;
-	HSSFRow row;
-	//as soon as we hit the first empty row, we break
-	while ((row = actSheet.getRow(rowIndex++)) != null){
-	  String actName = row.getCell(0).getStringCellValue().toLowerCase();
-	  double maxCampers = row.getCell(1).getNumericCellValue();
-
-	  //if the cell says "yes" then we add it to the list
-	  HSSFCell cell = row.getCell(period + 1);
-	  if (cell != null && cell.getStringCellValue().toLowerCase().equals("yes")) {
-		Activity activity = new Activity(actName, period, maxCampers);
-		acts.add(activity);
-	  }
-	}
-
-	return acts;
-  }
-
-  // TODO
-  private static ArrayList<Camper> buildAllCampers(HSSFSheet camperChoiceSheet){
-	ArrayList<Camper> campers = new ArrayList<Camper>();
-
-	HSSFRow row = camperChoiceSheet.getRow(1);
-	int rowIndex = 1;
-	while((row = camperChoiceSheet.getRow(rowIndex++)) != null){
-	  String lastN = row.getCell(1).getStringCellValue();
-	  String firstN = row.getCell(2).getStringCellValue();
-	  if(lastN == null || lastN.equals("")){
-		  break;
-	  }
-
-	  ArrayList<String> choices = new ArrayList<String>();
-	  for (int i = 3; i < 9; i++){
-	  	HSSFCell cell = row.getCell(i);
-	  	if(cell == null){
-	  		cell = row.createCell(i);
-		}
-		choices.add(cell.getStringCellValue().toLowerCase());
-	  }
-
-	  Camper camper = new Camper(firstN, lastN, choices, rowIndex - 1);
-	  //System.out.println(camper);
-	  campers.add(camper);
-	}
-
-	return campers;
-  }
-
-  private static void writeActivities(ArrayList<Camper> campers, HSSFSheet camperSheet){
-      int rowIndex = 1;
-      HSSFRow camperRow;
-
-      for(Camper camper : campers){
-          camperRow = camperSheet.getRow(camper.id);
-
-          String first = camperRow.getCell(1).getStringCellValue();
-          String last = camperRow.getCell(2).getStringCellValue();
-
-
-
-          //Check to see if there is such a camper
-          if(camper != null) {
-              HSSFCell act1 = camperRow.getCell(9);
-              HSSFCell act2 = camperRow.getCell(10);
-              HSSFCell act3 = camperRow.getCell(11);
-              HSSFCell act4 = camperRow.getCell(12);
-
-              String act1Name = camper.getAct(1);
-              String act2Name = camper.getAct(2);
-              String act3Name = camper.getAct(3);
-              String act4Name = camper.getAct(4);
-
-              if (act1Name != null) {
-                  act1.setCellValue(act1Name);
-              }
-              if (act2Name != null) {
-                  act2.setCellValue(act2Name);
-              }
-              if (act3Name != null) {
-                  act3.setCellValue(act3Name);
-              }
-              if (act4Name != null) {
-                  act4.setCellValue(act4Name);
-              }
-
-              System.out.println("wrote " + camper + " to row " + (camper.id + 1));
-          }
-      }
-  }
-
-  private static Camper findCamper(ArrayList<Camper> allCampers, String first, String last){
-      for (Camper camper : allCampers){
-          if (first.toLowerCase().equals(camper.firstName.toLowerCase()) && last.toLowerCase().equals(camper.lastName.toLowerCase())){
-              return camper;
-          }
-      }
-
-      return null;
-  }
 }
