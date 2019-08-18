@@ -1,102 +1,143 @@
-//import Activity;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Comparator;
 
-class Camper {
+class Camper implements Comparable<Camper> {
 
-  public String firstName;
-  public String lastName;
-  private Activity[] activities;
-  private String firstChoice;
-  private String secondChoice;
-  private List<String> choices;
-  public int age;
-  public int id;
+	private String firstName;
+	private String lastName;
+	private Activity[] activities;
 
-  /*
-    Constructor for Camper
-    Give first and last name, and list all their activity choices
-  */
-  public Camper(String firstName, String lastName, ArrayList<String> allChoices, int id){
-    firstChoice = allChoices.get(0);
-    secondChoice = allChoices.get(1);
-    choices = allChoices.subList(2, allChoices.size());
-    activities = new Activity[4];
-    this.firstName = firstName;
-    this.lastName = lastName;
-    this.id = id;
-  }
+	private String[] choices;
+	private boolean isEmph;
+	private int age;
+	private int id;
 
-//  public String stringActs(){
-//    for (int i = 0; i < 4)
-//  }
+	public Camper(String firstName, String lastName, String[] choices, 
+				  int id, boolean isEmph) {
+		this.choices = choices.clone();
+		activities = new Activity[4];
+		this.firstName = firstName;
+		this.lastName = lastName;
+		this.id = id;
+		this.isEmph = isEmph; 
+	}
 
-  public void place(int choiceNum, List<Activity> acts) throws TooManyCampersException, NoMatchingActivitiesFoundException{
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + age;
+		result = prime * result + ((firstName == null) ? 0 : firstName.hashCode());
+		result = prime * result + id;
+		result = prime * result + ((lastName == null) ? 0 : lastName.hashCode());
+		return result;
+	}
 
-    if (choiceNum == 1 && this.emph()) {
-      this.placeString(this.firstChoice + "emph1", acts);
-      this.placeString(this.firstChoice + "emph2", acts);
-    } else if (choiceNum == 2 && this.emph()) {
-      // do nothing??
-    } else if (choiceNum == 1) {
-      this.placeString(firstChoice, acts);
-    } else if (choiceNum == 2) {
-      this.placeString(secondChoice, acts);
-    } else {
-      this.placeString(choices.get(choiceNum - 3), acts);
-    }
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Camper other = (Camper) obj;
+		if (age != other.age)
+			return false;
+		if (firstName == null) {
+			if (other.firstName != null)
+				return false;
+		} else if (!firstName.equals(other.firstName))
+			return false;
+		if (id != other.id)
+			return false;
+		if (lastName == null) {
+			if (other.lastName != null)
+				return false;
+		} else if (!lastName.equals(other.lastName))
+			return false;
+		return true;
+	}
 
-  }
+	// Adds an activity to a camper's schedule.
+	public void addActivity(Activity act, int period) {
+		activities[period] = act;
+	}
 
-  //places camper in matching act with lowest ratio
-  private void placeString(String actName, List<Activity> acts) throws TooManyCampersException, NoMatchingActivitiesFoundException{
-    ArrayList<Activity> matching = new ArrayList<Activity>();
+	// returns true if the camper has four activities scheduled
+	public boolean isScheduled(){
+		return activities[0] != null && activities[1] != null
+				&& activities[2] != null && activities[3] != null;
+	}
 
-    for (Activity act : acts){
-      if (act.name.equals(actName)){
-        matching.add(act);
-      }
-    }
+	//  //returns true if a camper put the same activity for their first and second
+	//  public boolean emph(){
+	//    return firstChoice.equals(secondChoice);
+	//  }
+	
+	public static class CamperComparator implements Comparator<Camper>{
+		public int compare(Camper camper1, Camper camper2){
+			if (camper1.getID() - camper2.getID() < 0) return -1;
+			else return 1;
+		}
+	}
 
-    matching.sort(new Activity.ActComparator());
-    //System.out.println(actName);
-    if (matching.size() == 0){
-      throw new NoMatchingActivitiesFoundException(actName);
-    }
-    Activity act = matching.get(0);
+	@Override
+	public int compareTo(Camper otherCamper) {
+		if(this.id - otherCamper.getID() < 0) return -1;
+		else return 1;
+	}
+	
+	public String toString(){
+		return firstName+ " " + lastName + this.sayActivities();
+	}
 
-    for(int i = 0; i < matching.size(); i++) {
-      if (act.campers.size() >= act.maxCampers) {
-        throw new TooManyCampersException();
-      }else if (activities[act.period - 1] != null) {
-      } else {
-        act.putCamper(this);
-        activities[act.period - 1] = act;
-        break;
-      }
-    }
-  }
+	public String sayActivities() {
+		StringBuilder sb = new StringBuilder();
+		sb.append("  [");
+		for(Activity a : activities) sb.append(a + ",");
+		sb.append("]");
+		return sb.toString();
+	}
+	
+	public String sayChoices() {
+		StringBuilder sb = new StringBuilder();
+		sb.append("\t");
+		for(String a : choices) sb.append(a + "\n\t");
+		return sb.toString();
+	}
 
-  // returns true if the camper has four activities scheduled
-  public boolean scheduled(){
-    return activities[0] != null && activities[1] != null
-            && activities[2] != null && activities[3] != null;
-  }
-
-  //returns true if a camper put the same activity for their first and second
-  public boolean emph(){
-    return firstChoice.equals(secondChoice);
-  }
-
-  public String toString(){
-    return firstName + lastName + activities[0] + activities[1] + activities[2] + activities[3];
-  }
-
-  public String getAct(int i){
-    if (activities[i - 1] == null){
-      return "";
-    }
-
-    return activities[i - 1].name;
-  }
+	public Activity getActivity(int i) {
+		return activities[i];
+	}
+	
+	public String getAct(int i){
+		if (activities[i - 1] == null){
+			return "";
+		}
+		return activities[i - 1].name;
+	}
+	
+	public String[] getChoices() {
+		return choices;
+	}
+	
+	public String getFirstName() {
+		return firstName;
+	}
+	
+	public String getLastName() {
+		return lastName;
+	}
+	
+	public boolean getIsEmph() {
+		return isEmph;
+	}
+	
+	public String getChoice(int choice) {
+		return choices[choice];
+	}
+	
+	public int getID() {
+		return id;
+	}
 }
