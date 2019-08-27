@@ -18,6 +18,7 @@ public class Scheduler {
 	public static ArrayList<Camper> allCampersMaster;
 
 	public static int[] actPeriodCounter;
+	private static int[] activitySpotCounter;
 
 	public static HashMap<String, Integer> failedActivitySchedule;
 
@@ -26,7 +27,7 @@ public class Scheduler {
 	private static File spreadFile;
 
 	private static XSSFWorkbook workbook = null;
-
+	
 	public static void main(String[] args){
 		actPeriodCounter = new int[4];
 
@@ -40,8 +41,9 @@ public class Scheduler {
 		camperChoices = workbook.getSheetAt(1);
 
 		// Reading in our data.
-		parseActivities(activities);
 		parseCampers(camperChoices);
+		parseActivities(activities);
+		checkActivitySpots();
 		
 		try {
 			filein.close();
@@ -59,13 +61,15 @@ public class Scheduler {
 
 		// Trying to create our first schedule.
 		for(int i = 0; i < 7500; i++) {
+			if(i % 1000 == 0)System.out.println("Iteration: " + i);
+			
 			//System.out.println(i);
 			variableSchedule = new Schedule(allCampersMaster, allActivitiesMaster);
 
 			// If we have a failed schedule, pass in the problem campers from that iteration.
 			variableSchedule.shuffleActivities();
 			
-			//keepResults == null ? new ArrayList<Camper>() : keepResults.problemCampers
+
 			variableSchedule.scheduleGuaranteed(new ArrayList<Camper>());
 
 			// Schedule works.
@@ -76,7 +80,8 @@ public class Scheduler {
 				System.exit(1);
 				break;
 			} 
-			// Schedule doesn't work, trash it. 
+			// Schedule doesn't work, check if it's the best we've found so far.
+			// then trash it. 
 			else {
 				if(keepSchedule == null) {
 					keepSchedule = variableSchedule;
@@ -95,7 +100,7 @@ public class Scheduler {
 							 " " + keepSchedule.getOptimizedScore() + "->" + variableSchedule.getOptimizedScore());
 					keepSchedule = variableSchedule;
 					keepResults = variableResults;
-				}
+				} else continue;
 			}
 
 		}
@@ -107,7 +112,9 @@ public class Scheduler {
 		if(keepSchedule != null) {
 			writeToFile(keepSchedule.allCampers, camperChoices, activities, keepSchedule.allActivities);
 		}
+		
 		cleanup();
+		sayFinished();
 	}
 
 	/**
@@ -179,7 +186,11 @@ public class Scheduler {
 			// Format check.
 			if(!(spreadFile.getName().contains(".xlsx") ||
 					spreadFile.getName().contains(".xlsm"))) {
-				throw new IllegalStateException("I'm sorry. That is an invalid file type. Please use a valid .xlsx or .xlsm file.");
+				 String message = "I'm sorry. The file you have \n" +
+						 "selected is an invalid file type.\n" + "Please try selecting a valid .xlsx or .xlsm file.";
+							    JOptionPane.showMessageDialog(new JFrame(), message, "Invalid File Format",
+							        JOptionPane.ERROR_MESSAGE);
+							   chooseInputFile();
 			}
 
 			// Opening connection.
@@ -187,23 +198,25 @@ public class Scheduler {
 				filein = new FileInputStream(spreadFile);
 				workbook = new XSSFWorkbook(filein);
 			} catch (FileNotFoundException e) {
-				System.err.println("File cannot be found");
-				e.printStackTrace();
+				 String message = "I'm sorry. The file you have \n" +
+				 "selected cannot be found.\n" + "Please try selecting a new one.";
+					    JOptionPane.showMessageDialog(new JFrame(), message, "File Not Found",
+					        JOptionPane.ERROR_MESSAGE);
+					   chooseInputFile();
 			} catch (IOException e) {
-				e.printStackTrace();
+				String message = "I'm sorry. The file you have \n" +
+						 "selected cannot be opened.\n" + "Please make sure the file is closed and try again.";
+							    JOptionPane.showMessageDialog(new JFrame(), message, "IO Exception",
+							        JOptionPane.ERROR_MESSAGE);
+							   chooseInputFile();
 			}
 		} else System.exit(0);
 	}
-
+	
 	/**
 	 * This method safely closes the file connections opened during the program.
 	 */
-	public static void cleanup() {
-
-        JOptionPane pane = new JOptionPane();
-        JDialog dialog = pane.createDialog(pane, "Done");
-        pane.setMessage("Finished scheduling campers");
-        dialog.setVisible(true);
+	private static void cleanup() {
 
         if(filein != null) {
 
@@ -225,6 +238,13 @@ public class Scheduler {
 		System.out.println("Goodbye!");
 		System.exit(0);
 	}
+	
+	private static void sayFinished() {
+        JOptionPane pane = new JOptionPane();
+        JDialog dialog = pane.createDialog(pane, "Done");
+        pane.setMessage("Finished scheduling campers");
+        dialog.setVisible(true);
+	}
 
 	/**
 	 * This method reads in the Activity data from the inputted Excel File.
@@ -233,6 +253,8 @@ public class Scheduler {
 	private static void parseActivities(XSSFSheet actSheet){
 		allActivitiesMaster = new HashMap<String, Activity[]>();
 		failedActivitySchedule = new HashMap<String, Integer>();
+		
+		activitySpotCounter = new int[4];
 
 		// the first row is a header, so start at the second one
 		int rowIndex = 1;
@@ -267,6 +289,7 @@ public class Scheduler {
 					activityCatalog[i - 2] = new Activity(actName, i-2, maxCampers, isVariable);
 					activityCount++;
 					actPeriodCounter[i-2]++;
+					activitySpotCounter[i-2] += maxCampers;
 				}
 				else
 					activityCatalog[i - 2] = null;
@@ -278,6 +301,25 @@ public class Scheduler {
 
 			allActivitiesMaster.put(actName, activityCatalog);
 		}
+	}
+	
+	private static void checkActivitySpots() {
+		for(int i = 0; i < activitySpotCounter.length; i++) {
+			System.out.println(activitySpotCounter[i]);
+			if(activitySpotCounter[i]-1 < allCampersMaster.size()) {
+				sayInvalidActivitySpots();
+				cleanup();
+				System.exit(1);
+			}
+		}
+	}
+	
+	private static void sayInvalidActivitySpots() {
+		String message = "Currently there are too many campers and too few spots in activities.\n"
+				+ "Please ensure that the number of spots in activities exceeds \n"
+				+ "the number of campers total and try again.";
+					    JOptionPane.showMessageDialog(new JFrame(), message, "File Not Found",
+					        JOptionPane.ERROR_MESSAGE);
 	}
 
 	/**
@@ -335,9 +377,13 @@ public class Scheduler {
 			}
 	}
 
-	// TODO Add in error checking (too many campers)
-	// TODO check number of slots per activity space error. 
-
+	/**
+	 * This method writes the schedule we've come up with to file. 
+	 * @param campers : The campers we've stored.
+	 * @param camperSheet : The sheet leading to where we got the camper data.
+	 * @param activitiesSheet : The sheet leading to where we got the activities.
+	 * @param activities : The activities we've stored. 
+	 */
 	private static void writeToFile(ArrayList<Camper> campers, XSSFSheet camperSheet, XSSFSheet activitiesSheet, HashMap<String, Activity[]> activities){
 		try {
 			fileout = new FileOutputStream(spreadFile);
@@ -350,9 +396,11 @@ public class Scheduler {
 		XSSFCell cell;
 		int blankCounter = 0;
 		
+		// Sorts campers by predetermined buddy number. 
 		Camper.CamperComparator cc = new Camper.CamperComparator();
 		campers.sort(cc);
 		
+		// Writes campers to file. 
 		for(Camper c : campers) {
 			row = camperSheet.getRow(c.getID()-(99 - blankCounter));
 			
@@ -371,6 +419,7 @@ public class Scheduler {
 			}
 		}
 		
+		// Writes activities to file. 
 		for(int i = 0; i < activities.size(); i++) {
 			row = activitiesSheet.getRow(i+1);
 			Activity[] target = activities.get(row.getCell(0).toString());

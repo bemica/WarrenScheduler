@@ -27,9 +27,6 @@ public class Schedule {
 		// TODO Determine whether this makes sense algorithmically.
 		shuffleCampers(problemCampers);
 
-		// Let's try to move some activities around. 
-		shuffleActivities();
-
 		Activity[] firstChoiceSchedule = null;
 		Activity[] secondChoiceSchedule = null;
 		for(int i = 0; i < allCampers.size(); i++) {
@@ -58,7 +55,6 @@ public class Schedule {
 		}
 	}
 
-	// TODO Change me to reflect changes.
 	/**
 	 * This method fills out the rest of the schedule.
 	 * @return : a boolean representing whether the schedule is valid or not.
@@ -75,7 +71,7 @@ public class Schedule {
 		// Randomly selects which activity choice to schedule next.
 		// TODO Room for algorithmic optimization.
 		for(int i = 0; i < 4; i++) {
-//			shuffleCampers(new ArrayList<Camper>());
+			//			shuffleCampers(new ArrayList<Camper>());
 			int random = rng.nextInt(activities.size());
 			scheduleActivity(activities.get(random));
 			activities.remove(random);
@@ -84,20 +80,15 @@ public class Schedule {
 		// Schedule Validity Check
 		for(Camper c : allCampers) {
 			if(!c.isScheduled()) {
-				//				System.out.println("Schedule is invalid.");
-				//				
-				//				System.out.println("\n-----Bug Report-----");
-				//				System.out.println(c.sayName());
-				//				System.out.println(c.sayActivities());
-				//				System.out.println(c.sayChoices());
-				//				System.out.println("--------------------\n");
-				//				
-				for(Camper cam : allCampers) {
-					if(!cam.isScheduled()) {
-						toReturn.problemCampers.add(cam);
-					}
 
+				for(int i = 0; i < allCampers.size(); i++) {
+					if(!allCampers.get(i).isScheduled()) {
+						toReturn.problemCampers.add(allCampers.get(i));
+						allCampers.remove(i);
+						i--;
+					}
 				}
+
 				toReturn.setIsValid(false);
 
 				//System.out.println("Score: " + "(" + optimizedScore + "/"+ theoreticalMax() + ")");
@@ -154,6 +145,7 @@ public class Schedule {
 		int roll; 
 		Camper temp;
 
+
 		while(switchIndex != 0) {
 			roll = rng.nextInt(switchIndex);
 			temp = allCampers.get(roll);
@@ -165,25 +157,27 @@ public class Schedule {
 		}
 	}
 
+	// Shuffles activities part 1.
 	public void shuffleActivities() {
 		Scheduler.actPeriodCounter = new int[4];
-		
+
 		for(Map.Entry<String, Activity[]> item : allActivities.entrySet()) {
 			Activity[] actSchedule = item.getValue();
 			inner:
-			for(Activity a : actSchedule) {
-				if(a != null) {
-					if(a.getIsVariable()) {
-						allActivities.put(item.getKey(), shuffleActivity(item.getValue()));
-						break inner;
-					} else {
-						Scheduler.actPeriodCounter[a.getPeriod()]++;
+				for(Activity a : actSchedule) {
+					if(a != null) {
+						if(a.getIsVariable()) {
+							allActivities.put(item.getKey(), shuffleActivity(item.getValue()));
+							break inner;
+						} else {
+							Scheduler.actPeriodCounter[a.getPeriod()]++;
+						}
 					}
 				}
-			}
 		}
 	}
 
+	// Shuffles activities part 2. 
 	private Activity[] shuffleActivity(Activity[] act) {
 		ArrayList<Activity> temp = new ArrayList<Activity>(3);
 		Activity[] toReturn = new Activity[4];
@@ -192,12 +186,17 @@ public class Schedule {
 			if(a != null) temp.add(a);
 		}
 
+		// Important. This prevents the activity shuffler from backing itself 
+		// into a corner and endlessly looping. 
+		int failCount = 0;
+
 		outer:
 			for(Activity a : temp) {
 				int targetPlace;
+				failCount = 0;
 
 				inner:
-					while(true) {
+					while(failCount < 200) {
 						targetPlace = rng.nextInt(4);
 
 						if(toReturn[targetPlace] == null &&
@@ -206,13 +205,41 @@ public class Schedule {
 							a.setPeriod(targetPlace);
 							Scheduler.actPeriodCounter[targetPlace]++;
 							continue outer;
+						} else {
+							failCount++;
 						}
 
 						continue inner;
 					}
 			}
 
+		// We've failed at shuffling. Need to fix counts. 
+		if(failCount == 200) {
+			cleanupActivityShuffle(toReturn, act);
+			return act;
+		}
+
 		return toReturn;
+	}
+
+	/**
+	 * This method cleans up our failed activity shuffle. 
+	 * @param toReturn : What we're returning.
+	 * @param acts : Activity we need to clean.
+	 */
+	private static void cleanupActivityShuffle(Activity[] toReturn, Activity[] acts) {
+		for(int i = 0; i < acts.length; i++) {
+			if(acts[i] != null) {
+				acts[i].setPeriod(i);
+				Scheduler.actPeriodCounter[i]++;
+			}
+		}
+
+		for(int i = 0; i < toReturn.length; i++) {
+			if(toReturn[i] != null) {
+				Scheduler.actPeriodCounter[i]--;
+			}
+		}
 	}
 
 	// What's better...
