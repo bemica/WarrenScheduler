@@ -68,12 +68,8 @@ class Camper implements Comparable<Camper> {
 		return activities[0] != null && activities[1] != null
 				&& activities[2] != null && activities[3] != null;
 	}
-
-	//  //returns true if a camper put the same activity for their first and second
-	//  public boolean emph(){
-	//    return firstChoice.equals(secondChoice);
-	//  }
 	
+	// Compares campers based on buddy number.
 	public static class CamperComparator implements Comparator<Camper>{
 		public int compare(Camper camper1, Camper camper2){
 			if (camper1.getID() - camper2.getID() < 0) return -1;
@@ -81,6 +77,7 @@ class Camper implements Comparable<Camper> {
 		}
 	}
 
+	// Compares campers based on buddy number.
 	@Override
 	public int compareTo(Camper otherCamper) {
 		if(this.id - otherCamper.getID() < 0) return -1;
