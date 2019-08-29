@@ -21,15 +21,18 @@ public class Scheduler {
 	private static int[] activitySpotCounter;
 
 	public static HashMap<String, Integer> failedActivitySchedule;
-
+	
+	private static ArrayList<Integer> changedChoices;
+	
 	private static OutputStream fileout = null;
 	private static FileInputStream filein = null;
 	private static File spreadFile;
 
 	private static XSSFWorkbook workbook = null;
-	
+
 	public static void main(String[] args){
 		actPeriodCounter = new int[4];
+		changedChoices = new ArrayList<Integer>();
 
 		chooseInputFile();
 
@@ -44,7 +47,7 @@ public class Scheduler {
 		parseCampers(camperChoices);
 		parseActivities(activities);
 		checkActivitySpots();
-		
+
 		try {
 			filein.close();
 		} catch (IOException e) {
@@ -62,13 +65,13 @@ public class Scheduler {
 		// Trying to create our first schedule.
 		for(int i = 0; i < 7500; i++) {
 			if(i % 1000 == 0)System.out.println("Iteration: " + i);
-			
+
 			//System.out.println(i);
 			variableSchedule = new Schedule(allCampersMaster, allActivitiesMaster);
 
 			// If we have a failed schedule, pass in the problem campers from that iteration.
 			variableSchedule.shuffleActivities();
-			
+
 
 			variableSchedule.scheduleGuaranteed(new ArrayList<Camper>());
 
@@ -88,16 +91,16 @@ public class Scheduler {
 					keepResults = variableResults;
 					continue;
 				}
-				
+
 				if(keepResults.problemCampers.size() > variableResults.problemCampers.size()) {
 					System.out.println("Found better schedule: " + keepResults.problemCampers.size() + " to " + variableResults.problemCampers.size() +
-							 " " + keepSchedule.getOptimizedScore() + "->" + variableSchedule.getOptimizedScore());
+							" " + keepSchedule.getOptimizedScore() + "->" + variableSchedule.getOptimizedScore());
 					keepSchedule = variableSchedule;
 					keepResults = variableResults;
 				} else if(keepResults.problemCampers.size() == variableResults.problemCampers.size() &&
 						keepSchedule.getOptimizedScore() > variableSchedule.getOptimizedScore()) {
 					System.out.println("Found better schedule: " + keepResults.problemCampers.size() + " to " + variableResults.problemCampers.size() +
-							 " " + keepSchedule.getOptimizedScore() + "->" + variableSchedule.getOptimizedScore());
+							" " + keepSchedule.getOptimizedScore() + "->" + variableSchedule.getOptimizedScore());
 					keepSchedule = variableSchedule;
 					keepResults = variableResults;
 				} else continue;
@@ -112,7 +115,7 @@ public class Scheduler {
 		if(keepSchedule != null) {
 			writeToFile(keepSchedule.allCampers, camperChoices, activities, keepSchedule.allActivities);
 		}
-		
+
 		cleanup();
 		sayFinished();
 	}
@@ -186,11 +189,11 @@ public class Scheduler {
 			// Format check.
 			if(!(spreadFile.getName().contains(".xlsx") ||
 					spreadFile.getName().contains(".xlsm"))) {
-				 String message = "I'm sorry. The file you have \n" +
-						 "selected is an invalid file type.\n" + "Please try selecting a valid .xlsx or .xlsm file.";
-							    JOptionPane.showMessageDialog(new JFrame(), message, "Invalid File Format",
-							        JOptionPane.ERROR_MESSAGE);
-							   chooseInputFile();
+				String message = "I'm sorry. The file you have \n" +
+						"selected is an invalid file type.\n" + "Please try selecting a valid .xlsx or .xlsm file.";
+				JOptionPane.showMessageDialog(new JFrame(), message, "Invalid File Format",
+						JOptionPane.ERROR_MESSAGE);
+				chooseInputFile();
 			}
 
 			// Opening connection.
@@ -198,27 +201,27 @@ public class Scheduler {
 				filein = new FileInputStream(spreadFile);
 				workbook = new XSSFWorkbook(filein);
 			} catch (FileNotFoundException e) {
-				 String message = "I'm sorry. The file you have \n" +
-				 "selected cannot be found.\n" + "Please try selecting a new one.";
-					    JOptionPane.showMessageDialog(new JFrame(), message, "File Not Found",
-					        JOptionPane.ERROR_MESSAGE);
-					   chooseInputFile();
+				String message = "I'm sorry. The file you have \n" +
+						"selected cannot be found.\n" + "Please try selecting a new one.";
+				JOptionPane.showMessageDialog(new JFrame(), message, "File Not Found",
+						JOptionPane.ERROR_MESSAGE);
+				chooseInputFile();
 			} catch (IOException e) {
 				String message = "I'm sorry. The file you have \n" +
-						 "selected cannot be opened.\n" + "Please make sure the file is closed and try again.";
-							    JOptionPane.showMessageDialog(new JFrame(), message, "IO Exception",
-							        JOptionPane.ERROR_MESSAGE);
-							   chooseInputFile();
+						"selected cannot be opened.\n" + "Please make sure the file is closed and try again.";
+				JOptionPane.showMessageDialog(new JFrame(), message, "IO Exception",
+						JOptionPane.ERROR_MESSAGE);
+				chooseInputFile();
 			}
 		} else System.exit(0);
 	}
-	
+
 	/**
 	 * This method safely closes the file connections opened during the program.
 	 */
 	private static void cleanup() {
 
-        if(filein != null) {
+		if(filein != null) {
 
 			try {
 				filein.close();
@@ -238,12 +241,12 @@ public class Scheduler {
 		System.out.println("Goodbye!");
 		System.exit(0);
 	}
-	
+
 	private static void sayFinished() {
-        JOptionPane pane = new JOptionPane();
-        JDialog dialog = pane.createDialog(pane, "Done");
-        pane.setMessage("Finished scheduling campers");
-        dialog.setVisible(true);
+		JOptionPane pane = new JOptionPane();
+		JDialog dialog = pane.createDialog(pane, "Done");
+		pane.setMessage("Finished scheduling campers");
+		dialog.setVisible(true);
 	}
 
 	/**
@@ -253,7 +256,7 @@ public class Scheduler {
 	private static void parseActivities(XSSFSheet actSheet){
 		allActivitiesMaster = new HashMap<String, Activity[]>();
 		failedActivitySchedule = new HashMap<String, Integer>();
-		
+
 		activitySpotCounter = new int[4];
 
 		// the first row is a header, so start at the second one
@@ -267,7 +270,7 @@ public class Scheduler {
 			String actName;
 			double maxCampers;
 			boolean isVariable;
-			
+
 			try {
 				actName = row.getCell(0).getStringCellValue().toLowerCase();
 				maxCampers = row.getCell(1).getNumericCellValue();
@@ -302,7 +305,7 @@ public class Scheduler {
 			allActivitiesMaster.put(actName, activityCatalog);
 		}
 	}
-	
+
 	private static void checkActivitySpots() {
 		for(int i = 0; i < activitySpotCounter.length; i++) {
 			System.out.println(activitySpotCounter[i]);
@@ -313,13 +316,13 @@ public class Scheduler {
 			}
 		}
 	}
-	
+
 	private static void sayInvalidActivitySpots() {
 		String message = "Currently there are too many campers and too few spots in activities.\n"
 				+ "Please ensure that the number of spots in activities exceeds \n"
 				+ "the number of campers total and try again.";
-					    JOptionPane.showMessageDialog(new JFrame(), message, "File Not Found",
-					        JOptionPane.ERROR_MESSAGE);
+		JOptionPane.showMessageDialog(new JFrame(), message, "File Not Found",
+				JOptionPane.ERROR_MESSAGE);
 	}
 
 	/**
@@ -336,6 +339,8 @@ public class Scheduler {
 
 		// List terminates when two blank rows are encountered.
 		boolean lastEmpty = false;
+
+		ArrayList<Integer> blankChoices;
 
 		XSSFRow row;
 		outer:
@@ -358,23 +363,59 @@ public class Scheduler {
 					lastEmpty = false;
 
 				String[] choices = new String[6];
+				blankChoices = new ArrayList<Integer>();
 
 				// Reading in camper activity choices. 
 				for(int k = 0; k < 6; k++) {
 					choices[k] = row.getCell(k+3).toString();
+					if(choices[k].equals(""))
+						blankChoices.add(k);
 				}
 
 				// TODO Add in emphasis checks. 
 				boolean isEmph = false;
 				if(choices[0].equals(choices[1])) isEmph = true;
-				
+
 				Camper c = new Camper(fname, lname, choices, idNumber, isEmph);
 				idNumber++;
+
+				// Checks if the camper has any choices that are blank.
+				if(blankChoices.size() != 0) {
+					fixBlankChoices(blankChoices, c);
+				}
 
 				allCampersMaster.add(c);
 
 				rowIndex++;
 			}
+	}
+
+	/**
+	 * This method prompts the user to fix campers with blank activity choices.
+	 * @param blanks : The spaces where the blanks exist.
+	 * @param camper : The camper whose choices have the blanks.
+	 */
+	private static void fixBlankChoices(ArrayList<Integer> blanks, Camper camper) {
+		for(int i = 0; i < blanks.size(); i++) {
+			String s = (String)JOptionPane.showInputDialog(
+					new JFrame(),
+					"Current activities: \n" + camper.sayChoices() + 
+					"\n\nEnter a new activity for them.",
+					camper.getFirstName() + " " + camper.getLastName() +
+					" has a blank activity choice",
+					JOptionPane.WARNING_MESSAGE,
+					null,
+					null,
+					"");
+
+			camper.setChoice(blanks.get(i), s);
+			changedChoices.add(camper.getID());
+			
+			// TODO need to add in some way to validate activity inputs here.
+			// Two choices: One, wait till activities have been parsed and then
+			// 				move blank activity logic to that point in time.
+			//				Two, somehow compile a list of the activities before this.
+		}
 	}
 
 	/**
@@ -387,28 +428,28 @@ public class Scheduler {
 	private static void writeToFile(ArrayList<Camper> campers, XSSFSheet camperSheet, XSSFSheet activitiesSheet, HashMap<String, Activity[]> activities){
 		try {
 			fileout = new FileOutputStream(spreadFile);
-			
+
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
-		
+
 		XSSFRow row;
 		XSSFCell cell;
-		int blankCounter = 0;
-		
+		int rowCounter = 1;
+
 		// Sorts campers by predetermined buddy number. 
 		Camper.CamperComparator cc = new Camper.CamperComparator();
 		campers.sort(cc);
-		
+
 		// Writes campers to file. 
 		for(Camper c : campers) {
-			row = camperSheet.getRow(c.getID()-(99 - blankCounter));
-			
+			row = camperSheet.getRow(rowCounter);
+
 			if(row.getCell(0).toString().equals("")) {
-				row = camperSheet.getRow(c.getID() - (99 - (blankCounter + 1)));
-				blankCounter++;
+				row = camperSheet.getRow(rowCounter++);
+				rowCounter++;
 			}
-			
+
 			for(int k = 0; k < 4; k++) {
 				cell = row.getCell(k+9);
 				if(c.getActivity(k) == null) {
@@ -417,8 +458,16 @@ public class Scheduler {
 				}
 				row.getCell(k+9).setCellValue(c.getActivity(k).getName());
 			}
+			
+			// Checks if the camper's activity choices have been altered since start.
+			if(changedChoices.get(0) == c.getID()) {
+				for(int i = 0; i < 6; i++) {
+					row.getCell(i + 3).setCellValue(c.getChoice(i));
+				}
+				changedChoices.remove(0);
+			}
 		}
-		
+
 		// Writes activities to file. 
 		for(int i = 0; i < activities.size(); i++) {
 			row = activitiesSheet.getRow(i+1);
@@ -433,7 +482,7 @@ public class Scheduler {
 				}
 			}
 		}
-		
+
 		try {
 			workbook.write(fileout);
 		} catch (IOException e) {

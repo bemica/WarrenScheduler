@@ -309,7 +309,7 @@ public class Schedule {
 	}
 
 	/**
-	 * This method sortes the activities passed in based on size.
+	 * This method sorts the activities passed in based on size.
 	 * @param activity : The array of activities.
 	 * @return : The activities sorted from smallest to largest size.
 	 */
