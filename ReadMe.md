@@ -25,7 +25,6 @@ Then you're all set!
 The program uses the XSSF library, meaning only Excel files from 2008 or newer can be used. In this repository you will also find the Excel sheet detailing the format the program expects campers in. 
 ![Excel Sheet](https://i.imgur.com/2OBX1id.jpg)
 Each camper should appear in this format. 
-**Important:**  Each camper **must** have all six activity choices filled out. 
 
 Adding or altering activities is also simple. Activities are formatted as follows:
 ![Excel Sheet](https://i.imgur.com/A4XFCT1.jpg)Each column represents if the activity is offered that period. The final column, "Variable?", tells the program that which period that activity appears can be changed for the sake of finding a better schedule. 
