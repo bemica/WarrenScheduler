@@ -96,11 +96,22 @@ class Camper implements Comparable<Camper> {
 		return sb.toString();
 	}
 	
+	// Says activity choices.
 	public String sayChoices() {
 		StringBuilder sb = new StringBuilder();
 		sb.append("\t");
-		for(String a : choices) sb.append(a + "\n\t");
+		for(String a : choices) {
+			if(a.equals("")) {
+				sb.append("NULL, ");
+			} else {
+				sb.append(a + ", ");
+			}
+		}
 		return sb.toString();
+	}
+	
+	public void setChoice(int i, String s) {
+		choices[i] = s;
 	}
 
 	public Activity getActivity(int i) {
