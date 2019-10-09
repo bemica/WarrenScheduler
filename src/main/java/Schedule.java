@@ -82,11 +82,7 @@ public class Schedule {
 			if(!c.isScheduled()) {
 
 				for(int i = 0; i < allCampers.size(); i++) {
-					if(!allCampers.get(i).isScheduled()) {
-						toReturn.problemCampers.add(allCampers.get(i));
-						allCampers.remove(i);
-						i--;
-					}
+					if(!allCampers.get(i).isScheduled()) toReturn.incrementUnscheduledCampers();
 				}
 
 				toReturn.setIsValid(false);

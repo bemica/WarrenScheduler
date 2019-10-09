@@ -71,8 +71,6 @@ public class Scheduler {
 
 			// If we have a failed schedule, pass in the problem campers from that iteration.
 			variableSchedule.shuffleActivities();
-
-
 			variableSchedule.scheduleGuaranteed(new ArrayList<Camper>());
 
 			// Schedule works.
@@ -92,14 +90,14 @@ public class Scheduler {
 					continue;
 				}
 
-				if(keepResults.problemCampers.size() > variableResults.problemCampers.size()) {
-					System.out.println("Found better schedule: " + keepResults.problemCampers.size() + " to " + variableResults.problemCampers.size() +
+				if(keepResults.getUnscheduledCampers() > variableResults.getUnscheduledCampers()) {
+					System.out.println("Found better schedule: " + keepResults.getUnscheduledCampers() + " to " + variableResults.getUnscheduledCampers() +
 							" " + keepSchedule.getOptimizedScore() + "->" + variableSchedule.getOptimizedScore());
 					keepSchedule = variableSchedule;
 					keepResults = variableResults;
-				} else if(keepResults.problemCampers.size() == variableResults.problemCampers.size() &&
+				} else if(keepResults.getUnscheduledCampers() == variableResults.getUnscheduledCampers() &&
 						keepSchedule.getOptimizedScore() > variableSchedule.getOptimizedScore()) {
-					System.out.println("Found better schedule: " + keepResults.problemCampers.size() + " to " + variableResults.problemCampers.size() +
+					System.out.println("Found better schedule: " + keepResults.getUnscheduledCampers() + " to " + variableResults.getUnscheduledCampers() +
 							" " + keepSchedule.getOptimizedScore() + "->" + variableSchedule.getOptimizedScore());
 					keepSchedule = variableSchedule;
 					keepResults = variableResults;
@@ -347,8 +345,16 @@ public class Scheduler {
 			while(true) {
 
 				row = camperSheet.getRow(rowIndex);
-				String fname = row.getCell(2).toString();
-				String lname = row.getCell(1).toString();
+
+				String fname, lname;
+				
+				try {
+					fname = row.getCell(2).toString();
+					lname = row.getCell(1).toString();
+				} catch(NullPointerException e) {
+					fname = "";
+					lname = "";
+				}
 
 				if(fname.equals("") && lname.equals("")) {
 					if(lastEmpty) {
@@ -443,12 +449,11 @@ public class Scheduler {
 
 		// Writes campers to file. 
 		for(Camper c : campers) {
-			row = camperSheet.getRow(rowCounter);
-
-			if(row.getCell(0).toString().equals("")) {
-				row = camperSheet.getRow(rowCounter++);
+			if(camperSheet.getRow(rowCounter).getCell(0).toString().equals("")) {
 				rowCounter++;
 			}
+			
+			row = camperSheet.getRow(rowCounter);
 
 			for(int k = 0; k < 4; k++) {
 				cell = row.getCell(k+9);
@@ -460,12 +465,14 @@ public class Scheduler {
 			}
 			
 			// Checks if the camper's activity choices have been altered since start.
-			if(changedChoices.get(0) == c.getID()) {
+			if(changedChoices.size() != 0 && changedChoices.get(0) == c.getID()) {
 				for(int i = 0; i < 6; i++) {
 					row.getCell(i + 3).setCellValue(c.getChoice(i));
 				}
 				changedChoices.remove(0);
 			}
+			
+			rowCounter++;
 		}
 
 		// Writes activities to file. 
