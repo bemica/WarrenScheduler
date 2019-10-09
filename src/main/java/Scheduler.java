@@ -1,4 +1,5 @@
 
+import java.awt.Color;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,9 +22,9 @@ public class Scheduler {
 	private static int[] activitySpotCounter;
 
 	public static HashMap<String, Integer> failedActivitySchedule;
-	
+
 	private static ArrayList<Integer> changedChoices;
-	
+
 	private static OutputStream fileout = null;
 	private static FileInputStream filein = null;
 	private static File spreadFile;
@@ -62,8 +63,26 @@ public class Scheduler {
 		Schedule variableSchedule = null;
 		ScheduleResults variableResults = null;
 
+		// create a frame 
+		JFrame f = new JFrame("Camp Warren Scheduler Progress");
+		JProgressBar b = new JProgressBar();
+		JPanel p = new JPanel();
+
+		b.setValue(0);
+		b.setStringPainted(true);
+		b.setForeground(Color.BLUE);
+		p.add(b);
+		f.add(p);
+		f.setSize(400, 100); 
+		f.setVisible(true); 
+		
+		int value = 8000;
+
 		// Trying to create our first schedule.
-		for(int i = 0; i < 7500; i++) {
+		for(int i = 0; i < value; i++) {
+
+			if(i % (value/100) == 0) b.setValue(b.getValue() + 1);
+			
 			if(i % 1000 == 0)System.out.println("Iteration: " + i);
 
 			//System.out.println(i);
@@ -306,19 +325,19 @@ public class Scheduler {
 
 	private static void checkActivitySpots() {
 		for(int i = 0; i < activitySpotCounter.length; i++) {
-			System.out.println(activitySpotCounter[i]);
 			if(activitySpotCounter[i]-1 < allCampersMaster.size()) {
-				sayInvalidActivitySpots();
+				sayInvalidActivitySpots(i, allCampersMaster.size() - (activitySpotCounter[i] - 1));
 				cleanup();
 				System.exit(1);
 			}
 		}
 	}
 
-	private static void sayInvalidActivitySpots() {
+	private static void sayInvalidActivitySpots(int activity, int spots) {
 		String message = "Currently there are too many campers and too few spots in activities.\n"
 				+ "Please ensure that the number of spots in activities exceeds \n"
-				+ "the number of campers total and try again.";
+				+ "the number of campers total and try again.\n\n"
+				+ "Specifically, there are " + spots + " too few spots in activity: " + (activity + 1);
 		JOptionPane.showMessageDialog(new JFrame(), message, "File Not Found",
 				JOptionPane.ERROR_MESSAGE);
 	}
@@ -347,7 +366,7 @@ public class Scheduler {
 				row = camperSheet.getRow(rowIndex);
 
 				String fname, lname;
-				
+
 				try {
 					fname = row.getCell(2).toString();
 					lname = row.getCell(1).toString();
@@ -416,7 +435,7 @@ public class Scheduler {
 
 			camper.setChoice(blanks.get(i), s);
 			changedChoices.add(camper.getID());
-			
+
 			// TODO need to add in some way to validate activity inputs here.
 			// Two choices: One, wait till activities have been parsed and then
 			// 				move blank activity logic to that point in time.
@@ -452,7 +471,7 @@ public class Scheduler {
 			if(camperSheet.getRow(rowCounter).getCell(0).toString().equals("")) {
 				rowCounter++;
 			}
-			
+
 			row = camperSheet.getRow(rowCounter);
 
 			for(int k = 0; k < 4; k++) {
@@ -463,7 +482,7 @@ public class Scheduler {
 				}
 				row.getCell(k+9).setCellValue(c.getActivity(k).getName());
 			}
-			
+
 			// Checks if the camper's activity choices have been altered since start.
 			if(changedChoices.size() != 0 && changedChoices.get(0) == c.getID()) {
 				for(int i = 0; i < 6; i++) {
@@ -471,7 +490,7 @@ public class Scheduler {
 				}
 				changedChoices.remove(0);
 			}
-			
+
 			rowCounter++;
 		}
 
