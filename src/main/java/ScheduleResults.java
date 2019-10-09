@@ -1,11 +1,9 @@
-import java.util.ArrayList;
-
 public class ScheduleResults {
 	private boolean isValid;
-	public ArrayList<Camper> problemCampers;
+	private int unscheduledCampers;
 	
 	public ScheduleResults() {
-		problemCampers = new ArrayList<Camper>();
+		unscheduledCampers = 0;
 	}
 	
 	public boolean getIsValid() {
@@ -14,5 +12,13 @@ public class ScheduleResults {
 	
 	public void setIsValid(boolean isValid) {
 		this.isValid = isValid;
+	}
+	
+	public int getUnscheduledCampers() {
+		return unscheduledCampers;
+	}
+	
+	public void incrementUnscheduledCampers() {
+		unscheduledCampers++;
 	}
 }
