@@ -4,10 +4,16 @@
 </center>
 Table of contents
 
+* Welcome
 * Getting Started
 * Formatting Data
 * Troubleshooting
 ***
+### Welcome
+Hello there and welcome to the Camp Warren camper scheduler. 
+This program exists to help you, the program coordinator, create schedules for camp in a fraction of the regular time. In the creation of this program we are hoping that you can spend more time writing the staff schedule and making the office run smoothly and less time figuring out how to fit kids into activities. Below you'll find hopefully all you'll need to know to get the program up and running but as always, if you have any questions or problems reach out to Cole Polyak at colepolyak@gmail.com or through Facebook messenger. 
+Have a wonderful summer and good luck!
+
 ### Getting Started
 To download the scheduler, download the jar file in this repository by first clicking on the file:
 ![GitHub Repo](https://i.imgur.com/B9pTTcW.jpg)
