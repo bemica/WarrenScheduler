@@ -1,5 +1,5 @@
 <center>
-	<img src="https://www.mysummercamps.com/camps/images/images/22858-work-warrenlogo.JPG" height=250>
+	<img src="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse4.mm.bing.net%2Fth%3Fid%3DOIP.1fTmJYEvdd8nf7Ufb5uG1AHaHa%26pid%3DApi&f=1" height=250>
 	<h1> Camp Warren Scheduler</h1>
 </center>
 Table of contents
