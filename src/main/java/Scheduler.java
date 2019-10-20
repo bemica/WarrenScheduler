@@ -1,4 +1,3 @@
-
 import java.awt.Color;
 import java.io.*;
 import java.util.ArrayList;
@@ -31,11 +30,24 @@ public class Scheduler {
 
 	private static XSSFWorkbook workbook = null;
 
-	public static void main(String[] args){
+	private static SchedulerGUI display;
+
+	public static void main(String[] args) {
+		display = new SchedulerGUI();
+		display.begin();
+	}
+
+
+	/**
+	 * This method schedules campers in activities.
+	 * @param iterations : The number of iterations we are doing.
+	 * @param inputFile : The file from which we're getting our info.
+	 */
+	public static void schedule(int iterations, File inputFile){
 		actPeriodCounter = new int[4];
 		changedChoices = new ArrayList<Integer>();
 
-		chooseInputFile();
+		initializeInputFile(inputFile);
 
 		XSSFSheet activities = null;
 		XSSFSheet camperChoices = null;
@@ -63,26 +75,13 @@ public class Scheduler {
 		Schedule variableSchedule = null;
 		ScheduleResults variableResults = null;
 
-		// create a frame 
-		JFrame f = new JFrame("Camp Warren Scheduler Progress");
-		JProgressBar b = new JProgressBar();
-		JPanel p = new JPanel();
-
-		b.setValue(0);
-		b.setStringPainted(true);
-		b.setForeground(Color.BLUE);
-		p.add(b);
-		f.add(p);
-		f.setSize(400, 100); 
-		f.setVisible(true); 
-		
-		int value = 8000;
-
 		// Trying to create our first schedule.
-		for(int i = 0; i < value; i++) {
+		for(int i = 0; i < iterations; i++) {
 
-			if(i % (value/100) == 0) b.setValue(b.getValue() + 1);
-			
+			if(i % (iterations/100) == 0) { 
+				b.setValue(b.getValue() + 1);
+			}
+
 			if(i % 1000 == 0)System.out.println("Iteration: " + i);
 
 			//System.out.println(i);
@@ -191,46 +190,27 @@ public class Scheduler {
 	}
 
 	/**
-	 * This method guides the user through selecting a file to read data from. 
+	 * This method opens a connection to the user specified input file.
+	 * @param inputFile
 	 */
-	public static void chooseInputFile() {
-		JFileChooser fileChooser = new JFileChooser();
-		fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
-
-		JDialog parent = new JDialog();
-		int result = fileChooser.showOpenDialog(parent);
-
-		if(result == JFileChooser.APPROVE_OPTION) {
-			spreadFile = fileChooser.getSelectedFile();
-
-			// Format check.
-			if(!(spreadFile.getName().contains(".xlsx") ||
-					spreadFile.getName().contains(".xlsm"))) {
-				String message = "I'm sorry. The file you have \n" +
-						"selected is an invalid file type.\n" + "Please try selecting a valid .xlsx or .xlsm file.";
-				JOptionPane.showMessageDialog(new JFrame(), message, "Invalid File Format",
-						JOptionPane.ERROR_MESSAGE);
-				chooseInputFile();
-			}
-
-			// Opening connection.
-			try {
-				filein = new FileInputStream(spreadFile);
-				workbook = new XSSFWorkbook(filein);
-			} catch (FileNotFoundException e) {
-				String message = "I'm sorry. The file you have \n" +
-						"selected cannot be found.\n" + "Please try selecting a new one.";
-				JOptionPane.showMessageDialog(new JFrame(), message, "File Not Found",
-						JOptionPane.ERROR_MESSAGE);
-				chooseInputFile();
-			} catch (IOException e) {
-				String message = "I'm sorry. The file you have \n" +
-						"selected cannot be opened.\n" + "Please make sure the file is closed and try again.";
-				JOptionPane.showMessageDialog(new JFrame(), message, "IO Exception",
-						JOptionPane.ERROR_MESSAGE);
-				chooseInputFile();
-			}
-		} else System.exit(0);
+	public static void initializeInputFile(File spreadFile) {
+		// Opening connection.
+		try {
+			filein = new FileInputStream(spreadFile);
+			workbook = new XSSFWorkbook(filein);
+		} catch (FileNotFoundException e) {
+			String message = "I'm sorry. The file you have \n" +
+					"selected cannot be found.\n" + "Please try selecting a new one.";
+			JOptionPane.showMessageDialog(new JFrame(), message, "File Not Found",
+					JOptionPane.ERROR_MESSAGE);
+			spreadFile = SchedulerGUI.selectFile();
+		} catch (IOException e) {
+			String message = "I'm sorry. The file you have \n" +
+					"selected cannot be opened.\n" + "Please make sure the file is closed and try again.";
+			JOptionPane.showMessageDialog(new JFrame(), message, "IO Exception",
+					JOptionPane.ERROR_MESSAGE);
+			spreadFile = SchedulerGUI.selectFile();
+		}
 	}
 
 	/**
