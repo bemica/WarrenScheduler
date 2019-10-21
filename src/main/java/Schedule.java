@@ -8,7 +8,7 @@ public class Schedule {
 	public ArrayList<Camper> allCampers;
 	private int optimizedScore;
 	private Random rng;
-
+	
 	public Schedule(ArrayList<Camper> allCampers, HashMap<String, Activity[]> allActivities) {
 		rng = new Random();
 
@@ -93,7 +93,7 @@ public class Schedule {
 			}
 		}
 
-		System.out.println("\n\nGO FUCKING CRAZY THE SCHEDULE WORKS");
+		System.out.println("\n\nI HAVE FOUND A SCHEDULE THAT SATISFIES ALL CONSTRAINTS.\nTHIS IS CAUSE FOR CELEBRATION");
 		System.out.println("Optimized score: " + "(" + optimizedScore + "/"+ theoreticalMax() + "\n\n");
 		toReturn.setIsValid(true);
 		return toReturn;
@@ -104,8 +104,8 @@ public class Schedule {
 	 * Activity choices 1, 2, 3, 4.
 	 * @return : An integer representing that value.
 	 */
-	private int theoreticalMax() {
-		return (3*allCampers.size()) + (4*allCampers.size());
+	public int theoreticalMax() {
+		return allCampers.size() + (2*allCampers.size()) + (3*allCampers.size()) + (4*allCampers.size());
 	}
 
 	/**

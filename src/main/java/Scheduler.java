@@ -1,5 +1,5 @@
-import java.awt.Color;
 import java.io.*;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,7 +12,9 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import javax.swing.*;
 
-public class Scheduler {
+// Scheduler has become threaded.
+// This was done to simultaneously handle updating the GUI and calculating the schedule.
+public class Scheduler implements Runnable {
 
 	public static HashMap<String, Activity[]> allActivitiesMaster;
 	public static ArrayList<Camper> allCampersMaster;
@@ -26,15 +28,43 @@ public class Scheduler {
 
 	private static OutputStream fileout = null;
 	private static FileInputStream filein = null;
-	private static File spreadFile;
+	private static File inputFile = null;
 
 	private static XSSFWorkbook workbook = null;
 
 	private static SchedulerGUI display;
+	
+	// Where we'll store the final data {unscheduled campers, optimized score, iterations}
+	public static double[] finalData = new double[3];
 
+	// Our thread!
+	private Thread t;
+	private String threadName;
+
+	// Creating an instance of the class.
+	public Scheduler(String name) {
+		threadName = name;
+	}
+
+	// Starting our thread.
+	public void start () {
+		if (t == null) {
+			t = new Thread (this, threadName);
+			t.start ();
+		}
+	}
+
+	// Main logic that creates the GUI to begin with.
 	public static void main(String[] args) {
 		display = new SchedulerGUI();
 		display.begin();
+	}
+
+	// Running the thread!
+	@Override
+	public void run() {
+		this.inputFile = display.getInputFile();
+		schedule(display.getIterations(), inputFile);
 	}
 
 
@@ -47,6 +77,7 @@ public class Scheduler {
 		actPeriodCounter = new int[4];
 		changedChoices = new ArrayList<Integer>();
 
+		finalData[2] = iterations;
 		initializeInputFile(inputFile);
 
 		XSSFSheet activities = null;
@@ -76,10 +107,11 @@ public class Scheduler {
 		ScheduleResults variableResults = null;
 
 		// Trying to create our first schedule.
+		System.out.println("First numbers are number of unscheduled campers,\n second numbers are optimized scores");
 		for(int i = 0; i < iterations; i++) {
 
 			if(i % (iterations/100) == 0) { 
-				b.setValue(b.getValue() + 1);
+				display.setProgressBarValue(display.getProgressBarValue() + 1);
 			}
 
 			if(i % 1000 == 0)System.out.println("Iteration: " + i);
@@ -113,6 +145,7 @@ public class Scheduler {
 							" " + keepSchedule.getOptimizedScore() + "->" + variableSchedule.getOptimizedScore());
 					keepSchedule = variableSchedule;
 					keepResults = variableResults;
+					
 				} else if(keepResults.getUnscheduledCampers() == variableResults.getUnscheduledCampers() &&
 						keepSchedule.getOptimizedScore() > variableSchedule.getOptimizedScore()) {
 					System.out.println("Found better schedule: " + keepResults.getUnscheduledCampers() + " to " + variableResults.getUnscheduledCampers() +
@@ -123,10 +156,18 @@ public class Scheduler {
 			}
 
 		}
+		
+		finalData[0] = keepResults.getUnscheduledCampers();
+		finalData[1] = ((double)keepSchedule.getOptimizedScore() / (double)keepSchedule.theoreticalMax());
 
+
+		System.out.println("\nThese are the number of times I failed scheduling campers in activities:");
+		System.out.println("A significantly large number means increasing spots in this activity could \n"
+				+ "greatly increase the accuracy of the schedule.");
 		for(Map.Entry<String, Integer> item : failedActivitySchedule.entrySet()) {
 			System.out.println(item.getKey() + ": " + item.getValue());
 		}
+		System.out.println("\n");
 
 		if(keepSchedule != null) {
 			writeToFile(keepSchedule.allCampers, camperChoices, activities, keepSchedule.allActivities);
@@ -234,16 +275,18 @@ public class Scheduler {
 				e.printStackTrace();
 			}
 		}
-
-		System.out.println("Goodbye!");
-		System.exit(0);
+		System.out.println("Schedule generation finished.");
 	}
 
-	private static void sayFinished() {
-		JOptionPane pane = new JOptionPane();
-		JDialog dialog = pane.createDialog(pane, "Done");
-		pane.setMessage("Finished scheduling campers");
-		dialog.setVisible(true);
+	// Generating the message that tells the user the program has finished.
+	private static void sayFinished() {		
+		DecimalFormat df = new DecimalFormat("#.###");
+		
+		String message =("In " + (int)finalData[2] + " iterations I was able to"
+						+ " create a schedule with only\n " + (int)finalData[0] 
+						+ " unscheduled campers and an optimized score of " + df.format(finalData[1]));
+		JOptionPane.showMessageDialog(new JFrame(), message, "Finished Scheduling Campers",
+				JOptionPane.INFORMATION_MESSAGE);
 	}
 
 	/**
@@ -432,7 +475,7 @@ public class Scheduler {
 	 */
 	private static void writeToFile(ArrayList<Camper> campers, XSSFSheet camperSheet, XSSFSheet activitiesSheet, HashMap<String, Activity[]> activities){
 		try {
-			fileout = new FileOutputStream(spreadFile);
+			fileout = new FileOutputStream(inputFile);
 
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -475,6 +518,7 @@ public class Scheduler {
 		}
 
 		// Writes activities to file. 
+		System.out.println("\nHere are the activities I'm writing to file:");
 		for(int i = 0; i < activities.size(); i++) {
 			row = activitiesSheet.getRow(i+1);
 			Activity[] target = activities.get(row.getCell(0).toString());
@@ -488,6 +532,7 @@ public class Scheduler {
 				}
 			}
 		}
+		System.out.println("\n");
 
 		try {
 			workbook.write(fileout);

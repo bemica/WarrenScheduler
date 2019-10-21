@@ -6,6 +6,9 @@ import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.io.InputStream;
+import java.net.URL;
+import java.text.DecimalFormat;
 
 import javax.swing.*;
 
@@ -16,9 +19,12 @@ import javax.swing.*;
 public class SchedulerGUI extends JFrame {
 	
 	public int height;
+	
 	private JProgressBar jbar = null;
 	private JTextField userText = null;
+	
 	private File inputFile = null;
+	private int iterations = 8000;
 	
 
 	public void begin() {    
@@ -59,9 +65,9 @@ public class SchedulerGUI extends JFrame {
 	private void placeComponents(JPanel panel) {
 		panel.setLayout(null);
 		
+		// TODO Fix this...
 		ImageImplement image = new ImageImplement(new ImageIcon("WarrenLogo.jpg").getImage());
 		panel.add(image);
-		
 		
 		panel = createIterationInput(panel);
 		panel = createFileInput(panel);
@@ -81,13 +87,24 @@ public class SchedulerGUI extends JFrame {
 		goCrazyButton.setBackground(Color.lightGray);
 		goCrazyButton.setForeground(Color.RED);
 		
+		jbar = new JProgressBar();
+		jbar.setValue(0);
+		jbar.setStringPainted(true);
+		jbar.setForeground(Color.RED);
+		jbar.setBounds(10, (int)(height - height * 0.74), height - 38, 25);
+		
+		panel.add(jbar);
+		
 		// What happens when the user clicks on the button.
 		goCrazyButton.addActionListener(new ActionListener() {
 	         public void actionPerformed(ActionEvent event) {
 	        	 try {
-	 	        	int iterations = Integer.parseInt(userText.getText());
-	 	        	Scheduler.schedule(iterations, inputFile);
+	 	        	iterations = Integer.parseInt(userText.getText());
 	 	        	
+	 	        	// Creating the thread that will handle scheduling and starting it.
+	 	        	Scheduler scheduler = new Scheduler( "Scheduler-Thread");
+	 	        	scheduler.start();
+	 	
 	        	 } catch(NumberFormatException e) {
 	        		 String message = "I'm sorry. You have entered something"
 	        		 		+ "\n other than an integer into the iteraion field.";
@@ -104,30 +121,12 @@ public class SchedulerGUI extends JFrame {
 		return panel;
 	}
 	
-	/**
-	 * Creates the progress bar that appears as the program runs.
-	 */
-	// TODO Figure out why this is being strange.
-	public void createProgressBarWindow() {
-		JFrame progressBarWindow = new JFrame("Scheduler Progress");
-		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-		height = (int) ((int)(screenSize.getHeight())*0.65);
-		progressBarWindow.setSize(height, (int)(height * 0.30));
-		progressBarWindow.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		
-		JPanel panel = new JPanel();
-		
-		jbar = new JProgressBar();
-		jbar.setValue(5);
-		jbar.setStringPainted(true);
-		jbar.setForeground(Color.BLUE);
-		
-		panel.add(jbar);
-		
-		
-		progressBarWindow.add(panel);
-		
-		progressBarWindow.setVisible(true);
+	public int getIterations() {
+		return iterations;
+	}
+	
+	public File getInputFile() {
+		return inputFile;
 	}
 	
 	/**
