@@ -4,10 +4,10 @@
 </center>
 Table of contents
 
-* Welcome
+* [Welcome](#Welcome)
 * Getting Started
 * Formatting Data
-* Troubleshooting
+* [Troubleshooting](#Troubleshooting)
 ***
 ### Welcome
 Hello there and welcome to the Camp Warren camper scheduler. 
@@ -19,7 +19,7 @@ To download the scheduler, download the jar file in this repository by first cli
 ![GitHub Repo](https://i.imgur.com/B9pTTcW.jpg)
 And then selecting the download option.
 ![Github Repo](https://i.imgur.com/E51cH9A.jpg)
-After the download has completed, find the Jar file on your computer. Double click to run. A dialog will appear guiding you through selecting the file with the input data.
+After the download has completed, find the Jar file on your computer. Double click to run. A dialog will appear guiding you through selecting the file with the input data and choosing how many iterations you would prefer.
 
 **IMPORTANT:** Ensure that the Excel data file is **closed** before running the program. In order for the program to read and write to the file, it must be closed.
 
