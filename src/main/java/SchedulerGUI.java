@@ -19,6 +19,7 @@ import javax.swing.*;
 public class SchedulerGUI extends JFrame {
 	
 	public int height;
+	
 	private JProgressBar jbar = null;
 	private JTextField userText = null;
 	
@@ -64,9 +65,9 @@ public class SchedulerGUI extends JFrame {
 	private void placeComponents(JPanel panel) {
 		panel.setLayout(null);
 		
+		// TODO Fix this...
 		ImageImplement image = new ImageImplement(new ImageIcon("WarrenLogo.jpg").getImage());
 		panel.add(image);
-		
 		
 		panel = createIterationInput(panel);
 		panel = createFileInput(panel);
@@ -99,6 +100,8 @@ public class SchedulerGUI extends JFrame {
 	         public void actionPerformed(ActionEvent event) {
 	        	 try {
 	 	        	iterations = Integer.parseInt(userText.getText());
+	 	        	
+	 	        	// Creating the thread that will handle scheduling and starting it.
 	 	        	Scheduler scheduler = new Scheduler( "Scheduler-Thread");
 	 	        	scheduler.start();
 	 	

@@ -1,4 +1,3 @@
-import java.awt.Color;
 import java.io.*;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -13,6 +12,8 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import javax.swing.*;
 
+// Scheduler has become threaded.
+// This was done to simultaneously handle updating the GUI and calculating the schedule.
 public class Scheduler implements Runnable {
 
 	public static HashMap<String, Activity[]> allActivitiesMaster;
@@ -33,16 +34,19 @@ public class Scheduler implements Runnable {
 
 	private static SchedulerGUI display;
 	
+	// Where we'll store the final data {unscheduled campers, optimized score, iterations}
 	public static double[] finalData = new double[3];
 
-
+	// Our thread!
 	private Thread t;
 	private String threadName;
 
+	// Creating an instance of the class.
 	public Scheduler(String name) {
 		threadName = name;
 	}
 
+	// Starting our thread.
 	public void start () {
 		if (t == null) {
 			t = new Thread (this, threadName);
@@ -50,16 +54,17 @@ public class Scheduler implements Runnable {
 		}
 	}
 
+	// Main logic that creates the GUI to begin with.
 	public static void main(String[] args) {
 		display = new SchedulerGUI();
 		display.begin();
 	}
 
+	// Running the thread!
 	@Override
 	public void run() {
 		this.inputFile = display.getInputFile();
 		schedule(display.getIterations(), inputFile);
-
 	}
 
 
@@ -273,6 +278,7 @@ public class Scheduler implements Runnable {
 		System.out.println("Schedule generation finished.");
 	}
 
+	// Generating the message that tells the user the program has finished.
 	private static void sayFinished() {		
 		DecimalFormat df = new DecimalFormat("#.###");
 		
@@ -281,7 +287,6 @@ public class Scheduler implements Runnable {
 						+ " unscheduled campers and an optimized score of " + df.format(finalData[1]));
 		JOptionPane.showMessageDialog(new JFrame(), message, "Finished Scheduling Campers",
 				JOptionPane.INFORMATION_MESSAGE);
-		//PLAIN_MESSAGE
 	}
 
 	/**
