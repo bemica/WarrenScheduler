@@ -56,7 +56,7 @@ Adding or altering activities is also simple. Activities are formatted as follow
 Each column represents if the activity is offered that period. The final column,
 "Variable?", tells the program that which period that activity appears can be changed for the sake of finding a better schedule. 
 
-**Emphasis** has to be handled slightly different currently. If you want an activity with only emphasis kids in that activity, you have to add the following to the activity sheet and the camper sheet:
+**Emphasis** has to be handled slightly different currently. If you want an activity with only emphasis kids in that activity, you have to add the following to the camper sheet and the activity sheet, respectively:
 
 ![](https://i.imgur.com/3mo4xCl.jpg)
 
